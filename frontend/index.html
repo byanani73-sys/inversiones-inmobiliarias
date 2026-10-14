@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#0f172a">
+<title>Inversiones Inmobiliarias</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  min-height: 100vh;
+}
+
+/* ===== AUTH SCREEN ===== */
+#auth-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 24px;
+}
+.auth-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 40px 48px;
+  text-align: center;
+  max-width: 420px;
+  width: 90%;
+}
+.auth-card h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 8px;
+}
+.auth-card p {
+  color: #94a3b8;
+  font-size: .95rem;
+  margin-bottom: 28px;
+  line-height: 1.5;
+}
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 20px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-google:hover { background: #2563eb; }
+.btn-google svg { flex-shrink: 0; }
+#auth-error {
+  color: #f87171;
+  font-size: .88rem;
+  margin-top: 14px;
+  display: none;
+}
+
+/* ===== APP (hidden until auth) ===== */
+#app { display: none; }
+
+/* ===== HEADER ===== */
+.header {
+  position: sticky; top: 0; z-index: 100;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  padding: 0 24px;
+  height: 52px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 2px 12px rgba(0,0,0,.4);
+}
+.header h1 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: #f1f5f9;
+}
+.header-right { display: flex; align-items: center; gap: 14px; }
+.header .counter { font-size: .82rem; color: #64748b; }
+.btn-signout {
+  background: none;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: .8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color .12s, color .12s;
+}
+.btn-signout:hover { border-color: #64748b; color: #e2e8f0; }
+
+/* ===== FILTERS ===== */
+.filters {
+  position: sticky; top: 52px; z-index: 90;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  padding: 10px 24px;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+}
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.filter-label {
+  font-size: .7rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+/* Multiselect dropdown */
+.multiselect-wrapper {
+  position: relative;
+}
+.multiselect-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: .85rem;
+  font-family: inherit;
+  cursor: pointer;
+  min-width: 160px;
+  min-height: 32px;
+  transition: border-color .12s;
+  white-space: nowrap;
+}
+.multiselect-trigger:hover { border-color: #64748b; }
+.multiselect-trigger.open { border-color: #3b82f6; }
+.multiselect-caret { margin-left: auto; color: #64748b; font-size: .7rem; }
+.multiselect-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
+}
+.multiselect-dropdown.open { display: block; }
+.multiselect-search {
+  width: 100%;
+  padding: 8px 12px;
+  background: #0f172a;
+  border: none;
+  border-bottom: 1px solid #334155;
+  color: #e2e8f0;
+  font-size: .85rem;
+  font-family: inherit;
+  outline: none;
+}
+.multiselect-search::placeholder { color: #64748b; }
+.multiselect-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: .85rem;
+  color: #cbd5e1;
+  transition: background .1s;
+}
+.multiselect-option:hover { background: #334155; }
+.multiselect-option input[type="checkbox"] { cursor: pointer; accent-color: #3b82f6; }
+.multiselect-option.checked { color: #f1f5f9; }
+.ms-actions {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #334155;
+}
+.ms-action-btn {
+  flex: 1;
+  padding: 7px 0;
+  background: none;
+  border: none;
+  color: #60a5fa;
+  font-size: .78rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .1s;
+}
+.ms-action-btn:hover { background: #334155; }
+.ms-action-btn + .ms-action-btn { border-left: 1px solid #334155; }
+
+/* Strategy toggle */
+.strategy-toggle {
+  display: flex;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.strat-btn {
+  padding: 5px 14px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: .82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .1s, color .1s;
+  min-height: 32px;
+  white-space: nowrap;
+}
+.strat-btn + .strat-btn { border-left: 1px solid #334155; }
+.strat-btn.active {
+  background: #3b82f6;
+  color: #fff;
+}
+.strat-btn:not(.active):hover { background: #1e293b; color: #e2e8f0; }
+
+/* Number inputs in filters */
+.filter-input {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #e2e8f0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: .85rem;
+  font-family: inherit;
+  width: 90px;
+  min-height: 32px;
+  outline: none;
+  transition: border-color .12s;
+}
+.filter-input:focus { border-color: #3b82f6; }
+.filter-input::placeholder { color: #475569; }
+
+/* Slider */
+.slider-wrapper { display: flex; align-items: center; gap: 8px; }
+.filter-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: #334155;
+  outline: none;
+  cursor: pointer;
+}
+.filter-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+}
+.filter-slider::-moz-range-thumb {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: none;
+  cursor: pointer;
+}
+.slider-val {
+  font-size: .82rem;
+  color: #94a3b8;
+  min-width: 24px;
+}
+
+/* Clear button */
+.btn-clear {
+  background: none;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: .82rem;
+  font-family: inherit;
+  cursor: pointer;
+  min-height: 32px;
+  transition: border-color .12s, color .12s;
+  white-space: nowrap;
+}
+.btn-clear:hover { border-color: #64748b; color: #e2e8f0; }
+
+/* Filter separator */
+.filter-sep {
+  width: 1px;
+  height: 32px;
+  background: #334155;
+  align-self: flex-end;
+}
+
+/* ===== LOADING / ERROR ===== */
+#loading-state, #error-state {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  gap: 16px;
+  text-align: center;
+}
+#loading-state.visible, #error-state.visible { display: flex; }
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid #334155;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading-state p { color: #64748b; font-size: .95rem; }
+#error-state p { color: #f87171; font-size: .95rem; }
+.btn-retry {
+  background: #1e293b;
+  border: 1px solid #3b82f6;
+  color: #60a5fa;
+  padding: 9px 20px;
+  border-radius: 8px;
+  font-size: .9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .12s;
+}
+.btn-retry:hover { background: #1d3461; }
+
+/* ===== TABLE WRAPPER ===== */
+.table-wrapper {
+  padding: 0 24px 24px;
+  overflow-x: auto;
+}
+#table-container { margin-top: 14px; }
+
+/* ===== TABLE ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1e293b;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #334155;
+}
+thead th {
+  background: #162032;
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: .75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  border-bottom: 1px solid #334155;
+  cursor: pointer;
+  user-select: none;
+  transition: color .12s;
+}
+thead th:hover { color: #94a3b8; }
+thead th.sort-asc::after  { content: " ↑"; color: #3b82f6; }
+thead th.sort-desc::after { content: " ↓"; color: #3b82f6; }
+thead th.sort-asc,
+thead th.sort-desc { color: #e2e8f0; }
+
+tbody tr {
+  border-bottom: 1px solid #1e2d42;
+  transition: background .1s;
+}
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #243347 !important; }
+tbody tr.row-best { background: rgba(34,197,94,.07); }
+tbody tr.row-good { background: rgba(234,179,8,.05); }
+
+td {
+  padding: 10px 12px;
+  font-size: .88rem;
+  vertical-align: middle;
+  color: #cbd5e1;
+}
+td.col-barrio { font-weight: 600; color: #e2e8f0; white-space: nowrap; }
+td.col-tipo { font-size: .83rem; white-space: nowrap; }
+td.col-m2 { font-variant-numeric: tabular-nums; }
+td.col-precio { font-weight: 700; color: #f1f5f9; white-space: nowrap; }
+td.col-vs-mercado { font-weight: 600; white-space: nowrap; }
+td.col-vs-mercado.pos { color: #4ade80; }
+td.col-vs-mercado.neg { color: #f87171; }
+td.col-estado { text-align: center; }
+td.col-roi { font-weight: 700; white-space: nowrap; text-align: right; }
+td.col-alquiler { white-space: nowrap; font-variant-numeric: tabular-nums; }
+td.col-ganancia { white-space: nowrap; font-variant-numeric: tabular-nums; }
+td.col-ver { text-align: center; }
+
+/* Estado badge */
+.badge-estado {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: .82rem;
+}
+.badge-null { color: #475569; font-size: .78rem; }
+
+/* ROI cell coloring */
+.roi-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-variant-numeric: tabular-nums;
+  min-width: 58px;
+}
+.roi-alq-1 { background: rgba(34,197,94,.15); color: #4ade80; }
+.roi-alq-2 { background: rgba(34,197,94,.25); color: #22c55e; }
+.roi-flip-1 { background: rgba(59,130,246,.18); color: #60a5fa; }
+.roi-flip-2 { background: rgba(59,130,246,.3); color: #3b82f6; }
+.roi-flip-3 { background: rgba(99,102,241,.35); color: #818cf8; }
+
+/* Ver button */
+.btn-ver {
+  background: #1e3a5f;
+  border: 1px solid #2563eb;
+  color: #60a5fa;
+  padding: 5px 14px;
+  border-radius: 6px;
+  font-size: .8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .12s;
+  white-space: nowrap;
+}
+.btn-ver:hover { background: #1d4ed8; color: #fff; }
+
+/* Empty state */
+#empty-state {
+  display: none;
+  text-align: center;
+  padding: 60px 24px;
+  color: #475569;
+  font-size: .95rem;
+}
+#empty-state.visible { display: block; }
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 300;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 820px;
+  position: relative;
+  margin: auto;
+  box-shadow: 0 24px 64px rgba(0,0,0,.7);
+}
+.modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #334155;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.modal-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  line-height: 1.3;
+}
+.modal-subtitle {
+  font-size: .85rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color .12s;
+  padding: 2px 6px;
+}
+.modal-close:hover { color: #e2e8f0; }
+.modal-body { padding: 20px 24px; }
+.modal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.meta-chip {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: .8rem;
+  color: #94a3b8;
+}
+.meta-chip strong { color: #e2e8f0; }
+.modal-description {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: .83rem;
+  color: #94a3b8;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  max-height: 100px;
+  overflow-y: auto;
+}
+.modal-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #60a5fa;
+  text-decoration: none;
+  font-size: .85rem;
+  margin-bottom: 20px;
+  transition: color .12s;
+}
+.modal-link:hover { color: #93c5fd; }
+
+/* Estado + notas */
+.modal-estado {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  font-size: .85rem;
+}
+.modal-estado-title {
+  font-weight: 600;
+  color: #94a3b8;
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 6px;
+}
+.modal-estado-content { color: #cbd5e1; }
+.modal-notas { color: #94a3b8; margin-top: 4px; font-size: .83rem; }
+
+/* Two-column strategy layout */
+.modal-strategies {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 600px) {
+  .modal-strategies { grid-template-columns: 1fr; }
+}
+.strategy-card {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 16px;
+}
+.strategy-card-title {
+  font-size: .78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #1e293b;
+}
+.strat-alq .strategy-card-title { color: #4ade80; }
+.strat-flip .strategy-card-title { color: #60a5fa; }
+.strat-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 0;
+  font-size: .85rem;
+  border-bottom: 1px solid #1a2438;
+}
+.strat-line:last-child { border-bottom: none; }
+.strat-line.total {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #334155;
+  border-bottom: none;
+  font-weight: 700;
+}
+.strat-key { color: #64748b; }
+.strat-val { color: #e2e8f0; font-variant-numeric: tabular-nums; }
+.strat-val.highlight { color: #4ade80; font-weight: 700; }
+.strat-val.highlight-blue { color: #60a5fa; font-weight: 700; }
+.strat-val.roi-big {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.strat-val.null-val { color: #475569; font-style: italic; }
+.strat-val.neg { color: #f87171; }
+
+.modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid #334155;
+  display: flex;
+  justify-content: flex-end;
+}
+.btn-modal-close {
+  background: #334155;
+  border: none;
+  color: #e2e8f0;
+  padding: 9px 24px;
+  border-radius: 8px;
+  font-size: .9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .12s;
+}
+.btn-modal-close:hover { background: #475569; }
+</style>
+</head>
+<body>
+
+<!-- ===== AUTH SCREEN ===== -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <h1>Inversiones Inmobiliarias</h1>
+    <p>Análisis de propiedades ZonaProp.<br>Ingresá con tu cuenta de Google para continuar.</p>
+    <button class="btn-google" id="btn-google-signin">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#fff" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/><path fill="#fff" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#fff" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/><path fill="#fff" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+      Continuar con Google
+    </button>
+    <p id="auth-error"></p>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="app">
+  <!-- Header -->
+  <header class="header">
+    <h1>Inversiones Inmobiliarias</h1>
+    <div class="header-right">
+      <span class="counter" id="counter">Cargando...</span>
+      <button class="btn-signout" id="btn-signout">Salir</button>
+    </div>
+  </header>
+
+  <!-- Filters -->
+  <div class="filters" id="filters-bar">
+    <!-- Barrio multiselect -->
+    <div class="filter-group">
+      <span class="filter-label">Barrio</span>
+      <div class="multiselect-wrapper" id="ms-barrio-wrapper">
+        <button class="multiselect-trigger" id="ms-barrio-trigger">
+          <span id="ms-barrio-label">Todos</span>
+          <span class="multiselect-caret">▼</span>
+        </button>
+        <div class="multiselect-dropdown" id="ms-barrio-dropdown">
+          <input type="text" class="multiselect-search" id="ms-barrio-search" placeholder="Buscar barrio...">
+          <div class="ms-actions">
+            <button class="ms-action-btn" id="ms-barrio-all">Todos</button>
+            <button class="ms-action-btn" id="ms-barrio-none">Ninguno</button>
+          </div>
+          <div id="ms-barrio-options"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-sep"></div>
+
+    <!-- Estrategia toggle -->
+    <div class="filter-group">
+      <span class="filter-label">Estrategia</span>
+      <div class="strategy-toggle">
+        <button class="strat-btn active" data-strat="ambas">Ambas</button>
+        <button class="strat-btn" data-strat="alquiler">Alquiler</button>
+        <button class="strat-btn" data-strat="flip">Flip</button>
+      </div>
+    </div>
+
+    <div class="filter-sep"></div>
+
+    <!-- ROI mínimo -->
+    <div class="filter-group">
+      <span class="filter-label">ROI mín. %</span>
+      <input type="number" class="filter-input" id="f-roi-min" placeholder="0" step="0.5" min="-100" max="100">
+    </div>
+
+    <!-- Descuento vs mercado mínimo -->
+    <div class="filter-group">
+      <span class="filter-label">Desc. mercado mín. %</span>
+      <input type="number" class="filter-input" id="f-desc-min" placeholder="—" step="1" min="-100" max="100">
+    </div>
+
+    <div class="filter-sep"></div>
+
+    <!-- Estado mínimo -->
+    <div class="filter-group">
+      <span class="filter-label">Estado mín.</span>
+      <div class="slider-wrapper">
+        <input type="range" class="filter-slider" id="f-estado-min" min="1" max="10" value="1">
+        <span class="slider-val" id="f-estado-val">1</span>
+      </div>
+    </div>
+
+    <div class="filter-sep"></div>
+
+    <div class="filter-group" style="justify-content: flex-end; padding-top: 16px;">
+      <button class="btn-clear" id="btn-clear-filters">Limpiar filtros</button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading-state" class="visible">
+    <div class="spinner"></div>
+    <p>Cargando propiedades...</p>
+  </div>
+
+  <!-- Error -->
+  <div id="error-state">
+    <p id="error-msg">No se pudieron cargar las propiedades.</p>
+    <button class="btn-retry" id="btn-retry">Reintentar</button>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrapper" id="table-wrapper" style="display:none;">
+    <div id="table-container">
+      <table id="main-table">
+        <thead>
+          <tr>
+            <th data-col="barrio_simple">Barrio</th>
+            <th data-col="tipo_label">Tipo / Amb</th>
+            <th data-col="m2_tasables">M² tasables</th>
+            <th data-col="precio_actual">Precio USD</th>
+            <th data-col="descuento_vs_mercado">vs Mercado</th>
+            <th data-col="estado_inmueble">Estado</th>
+            <th data-col="rendimiento_alquiler">ROI Alquiler</th>
+            <th data-col="alquiler_mensual">Alq./mes</th>
+            <th data-col="roi_flip">ROI Flip</th>
+            <th data-col="ganancia_flip">Ganancia flip</th>
+            <th style="cursor:default;">Ver</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+    <div id="empty-state">No hay propiedades que coincidan con los filtros.</div>
+  </div>
+</div>
+
+<!-- ===== MODAL ===== -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modal-title"></div>
+        <div class="modal-subtitle" id="modal-subtitle"></div>
+      </div>
+      <button class="modal-close" id="modal-close">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn-modal-close" id="modal-close-footer">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIGURATION
+   ============================================================ */
+const APPS_SCRIPT_URL = "PLACEHOLDER_URL";
+const API_KEY = "inversiones-zp-2024";
+const ALLOWED_EMAIL = "byanani73@gmail.com";
+
+const firebaseConfig = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_AUTH_DOMAIN",
+  projectId:         "YOUR_PROJECT_ID",
+  storageBucket:     "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId:             "YOUR_APP_ID",
+};
+
+/* ============================================================
+   MARKET DATA
+   ============================================================ */
+const ALQUILER_M2 = {
+  "Puerto Madero": 23, "Núñez": 20, "Palermo": 19, "Colegiales": 18,
+  "Belgrano": 16, "Recoleta": 15, "Retiro": 15, "Villa Crespo": 14,
+  "Villa Urquiza": 14, "Flores": 13, "Caballito": 13, "Almagro": 12,
+  "Monserrat": 12, "Centro / Microcentro": 11, "Balvanera": 10,
+};
+
+const VENTA_M2 = {
+  "Recoleta":  { mono: 2300, "2amb": 2200, "3amb": 2100, "4mas": 1900, ph: null },
+  "Palermo":   { mono: 2600, "2amb": 2400, "3amb": 2200, "4mas": 2100, ph: 1500 },
+  "Belgrano":  { mono: 2400, "2amb": 2200, "3amb": 2100, "4mas": 1900, ph: 1600 },
+  "Almagro":   { mono: 1900, "2amb": 1800, "3amb": 1700, "4mas": 1400, ph: 1100 },
+  "Balvanera": { mono: 1500, "2amb": 1500, "3amb": 1300, "4mas": 1100, ph: 800  },
+};
+
+const COMPARABLES = {
+  "Saavedra":             ["Núñez",          0.95],
+  "Coghlan":              ["Saavedra",        0.95],
+  "Villa Devoto":         ["Villa Urquiza",   0.90],
+  "Villa del Parque":     ["Villa Urquiza",   0.90],
+  "Chacarita":            ["Villa Crespo",    0.90],
+  "Parque Chas":          ["Coghlan",         0.90],
+  "La Paternal":          ["Villa Crespo",    0.85],
+  "Agronomía":            ["La Paternal",     0.90],
+  "Boedo":                ["Almagro",         0.90],
+  "San Cristóbal":        ["Balvanera",       0.95],
+  "Once":                 ["Balvanera",       0.95],
+  "Congreso":             ["Monserrat",       1.00],
+  "Floresta":             ["Caballito",       0.85],
+  "Tribunales":           ["Recoleta",        0.90],
+  "San Telmo":            ["Monserrat",       1.10],
+  "Parque Patricios":     ["Boedo",           0.85],
+  "Barracas / La Boca":   ["Parque Patricios",0.90],
+  "Mataderos":            ["Flores",          0.80],
+};
+
+// Costo de refacción: clave = score mínimo del rango
+const COSTO_REFACCION_M2 = [
+  { min: 8, costo: 0 },
+  { min: 6, costo: 150 },
+  { min: 4, costo: 400 },
+  { min: 2, costo: 750 },
+  { min: 0, costo: 1100 },
+];
+
+const SELLOS      = 0.036;
+const ESCRIBANIA_COMPRA = 0.020;
+const COMISION_VENTA    = 0.030;
+const ESCRIBANIA_VENTA  = 0.010;
+
+/* ============================================================
+   UTILITY FUNCTIONS
+   ============================================================ */
+function fmt(n, decimals = 0) {
+  if (n == null || isNaN(n)) return "—";
+  return n.toLocaleString("es-AR", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+function fmtUSD(n) {
+  if (n == null || isNaN(n)) return "—";
+  return "USD " + fmt(Math.round(n));
+}
+function fmtPct(n, decimals = 1) {
+  if (n == null || isNaN(n)) return "—";
+  return fmt(n, decimals) + "%";
+}
+
+function tipoAmb(prop) {
+  const tipo = (prop.tipo_propiedad || "").toLowerCase();
+  if (tipo === "ph") return "ph";
+  const amb = parseInt(prop.ambientes, 10);
+  if (amb === 1) return "mono";
+  if (amb === 2) return "2amb";
+  if (amb === 3) return "3amb";
+  if (amb >= 4)  return "4mas";
+  return "mono"; // default
+}
+
+function tipoLabel(prop) {
+  const tipo = (prop.tipo_propiedad || "Depto");
+  const amb = parseInt(prop.ambientes, 10);
+  if (!isNaN(amb)) return `${tipo} ${amb} amb`;
+  return tipo;
+}
+
+function getAlquilerM2(barrio, depth = 0) {
+  if (depth > 5) return null;
+  if (ALQUILER_M2[barrio] != null) return ALQUILER_M2[barrio];
+  if (COMPARABLES[barrio]) {
+    const [comp, factor] = COMPARABLES[barrio];
+    const base = getAlquilerM2(comp, depth + 1);
+    if (base != null) return base * factor;
+  }
+  return null;
+}
+
+function getVentaM2(barrio, ambientes, tipo, depth = 0) {
+  if (depth > 5) return null;
+  const key = tipoAmb({ ambientes, tipo_propiedad: tipo });
+  if (VENTA_M2[barrio]) {
+    const val = VENTA_M2[barrio][key];
+    if (val != null) return val;
+    // Intentar con otro tipo si es null
+    return null;
+  }
+  if (COMPARABLES[barrio]) {
+    const [comp, factor] = COMPARABLES[barrio];
+    const base = getVentaM2(comp, ambientes, tipo, depth + 1);
+    if (base != null) return base * factor;
+  }
+  return null;
+}
+
+function getCostoRefaccion(estado) {
+  if (estado == null) return 0;
+  const score = parseInt(estado, 10);
+  for (const { min, costo } of COSTO_REFACCION_M2) {
+    if (score >= min) return costo;
+  }
+  return 1100;
+}
+
+function getMtasables(prop) {
+  const mt = parseFloat(prop.m2_tasables);
+  if (!isNaN(mt) && mt > 0) return mt;
+  const mc = parseFloat(prop.m2_cubiertos);
+  if (!isNaN(mc) && mc > 0) return mc;
+  return null;
+}
+
+function calcularMetricas(prop) {
+  const precio = parseFloat(prop.precio_actual);
+  const m2 = getMtasables(prop);
+  if (!m2 || !precio || precio <= 0) return null;
+
+  const costos_compra = precio * (SELLOS + ESCRIBANIA_COMPRA);
+  const precio_total_compra = precio + costos_compra;
+
+  const estado = prop.estado_inmueble != null ? parseInt(prop.estado_inmueble, 10) : null;
+  const costo_refaccion_m2 = estado != null ? getCostoRefaccion(estado) : 0;
+  const costo_refaccion = costo_refaccion_m2 * m2;
+
+  const inversion_total = precio_total_compra + costo_refaccion;
+
+  // Alquiler
+  const alq_m2 = getAlquilerM2(prop.barrio_simple || "");
+  const alquiler_mensual = alq_m2 != null ? alq_m2 * m2 : null;
+  const rendimiento_alquiler = alquiler_mensual != null && inversion_total > 0
+    ? (alquiler_mensual * 12) / inversion_total * 100
+    : null;
+
+  // Venta / mercado
+  const venta_m2 = getVentaM2(prop.barrio_simple || "", prop.ambientes, prop.tipo_propiedad);
+  const precio_mercado_venta = venta_m2 != null ? venta_m2 * m2 : null;
+  const descuento_vs_mercado = precio_mercado_venta != null && precio_mercado_venta > 0
+    ? (precio_mercado_venta - precio) / precio_mercado_venta * 100
+    : null;
+
+  // Flip
+  const costos_venta = precio_mercado_venta != null
+    ? (COMISION_VENTA + ESCRIBANIA_VENTA) * precio_mercado_venta
+    : null;
+  const ganancia_flip = precio_mercado_venta != null
+    ? precio_mercado_venta - inversion_total - costos_venta
+    : null;
+  const roi_flip = ganancia_flip != null && inversion_total > 0
+    ? ganancia_flip / inversion_total * 100
+    : null;
+
+  return {
+    costos_compra,
+    precio_total_compra,
+    costo_refaccion,
+    costo_refaccion_m2,
+    inversion_total,
+    alquiler_mensual,
+    rendimiento_alquiler,
+    precio_mercado_venta,
+    venta_m2,
+    descuento_vs_mercado,
+    costos_venta,
+    ganancia_flip,
+    roi_flip,
+  };
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let allProps = [];
+let metricas = {};
+let sortCol  = "rendimiento_alquiler";
+let sortDir  = "desc";
+let selectedBarrios = new Set();
+let allBarrios = [];
+let currentStrategy = "ambas";
+let filters = {
+  roiMin: null,
+  descMin: null,
+  estadoMin: 1,
+};
+
+/* ============================================================
+   FIREBASE AUTH
+   ============================================================ */
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+document.getElementById("btn-google-signin").addEventListener("click", () => {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(err => {
+    const el = document.getElementById("auth-error");
+    el.style.display = "block";
+    el.textContent = "Error al ingresar: " + err.message;
+  });
+});
+
+document.getElementById("btn-signout").addEventListener("click", () => {
+  auth.signOut();
+});
+
+auth.onAuthStateChanged(user => {
+  if (user) {
+    if (user.email !== ALLOWED_EMAIL) {
+      auth.signOut();
+      const el = document.getElementById("auth-error");
+      el.style.display = "block";
+      el.textContent = "Acceso no autorizado para " + user.email;
+      document.getElementById("auth-screen").style.display = "flex";
+      document.getElementById("app").style.display = "none";
+      return;
+    }
+    document.getElementById("auth-screen").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    cargarPropiedades();
+  } else {
+    document.getElementById("auth-screen").style.display = "flex";
+    document.getElementById("app").style.display = "none";
+  }
+});
+
+/* ============================================================
+   DATA LOADING
+   ============================================================ */
+async function cargarPropiedades() {
+  showLoading();
+  try {
+    const url = APPS_SCRIPT_URL + "?key=" + API_KEY + "&action=get_properties";
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    const props = Array.isArray(data) ? data : (data.propiedades || data.data || []);
+
+    // Filtrar solo USD con precio y m2
+    allProps = props.filter(p => {
+      const moneda = (p.moneda || "").toUpperCase();
+      if (moneda === "ARS") return false;
+      const precio = parseFloat(p.precio_actual);
+      const m2 = getMtasables(p);
+      return precio > 0 && m2 > 0;
+    });
+
+    // Precalcular métricas
+    metricas = {};
+    allProps.forEach(p => {
+      metricas[p.id_zonaprop] = calcularMetricas(p);
+    });
+
+    // Barrios únicos
+    allBarrios = [...new Set(allProps.map(p => p.barrio_simple || "Sin barrio").filter(Boolean))].sort();
+    selectedBarrios = new Set(allBarrios);
+    buildBarrioOptions();
+
+    showTable();
+    renderTable();
+  } catch (err) {
+    showError("No se pudieron cargar las propiedades. " + err.message);
+  }
+}
+
+document.getElementById("btn-retry").addEventListener("click", cargarPropiedades);
+
+function showLoading() {
+  document.getElementById("loading-state").classList.add("visible");
+  document.getElementById("error-state").classList.remove("visible");
+  document.getElementById("table-wrapper").style.display = "none";
+}
+function showTable() {
+  document.getElementById("loading-state").classList.remove("visible");
+  document.getElementById("error-state").classList.remove("visible");
+  document.getElementById("table-wrapper").style.display = "block";
+}
+function showError(msg) {
+  document.getElementById("loading-state").classList.remove("visible");
+  document.getElementById("error-state").classList.add("visible");
+  document.getElementById("error-msg").textContent = msg;
+  document.getElementById("table-wrapper").style.display = "none";
+}
+
+/* ============================================================
+   FILTER LOGIC
+   ============================================================ */
+function getFilteredProps() {
+  return allProps.filter(p => {
+    // Barrio
+    const barrio = p.barrio_simple || "Sin barrio";
+    if (!selectedBarrios.has(barrio)) return false;
+
+    const m = metricas[p.id_zonaprop];
+    if (!m) return false;
+
+    // ROI mínimo según estrategia
+    if (filters.roiMin != null && !isNaN(filters.roiMin)) {
+      if (currentStrategy === "alquiler") {
+        const roi = m.rendimiento_alquiler;
+        if (roi == null || roi < filters.roiMin) return false;
+      } else if (currentStrategy === "flip") {
+        const roi = m.roi_flip;
+        if (roi == null || roi < filters.roiMin) return false;
+      } else {
+        // ambas: al menos una supera el mínimo
+        const roiA = m.rendimiento_alquiler;
+        const roiF = m.roi_flip;
+        const okA = roiA != null && roiA >= filters.roiMin;
+        const okF = roiF != null && roiF >= filters.roiMin;
+        if (!okA && !okF) return false;
+      }
+    }
+
+    // Descuento vs mercado mínimo
+    if (filters.descMin != null && !isNaN(filters.descMin)) {
+      if (m.descuento_vs_mercado == null || m.descuento_vs_mercado < filters.descMin) return false;
+    }
+
+    // Estado mínimo (si es null, pasa igual)
+    if (filters.estadoMin > 1 && p.estado_inmueble != null) {
+      if (parseInt(p.estado_inmueble, 10) < filters.estadoMin) return false;
+    }
+
+    return true;
+  });
+}
+
+function sortProps(props) {
+  return [...props].sort((a, b) => {
+    let va = getColVal(a, sortCol);
+    let vb = getColVal(b, sortCol);
+    // Nulos siempre al final
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === "string") va = va.toLowerCase();
+    if (typeof vb === "string") vb = vb.toLowerCase();
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ? 1 : -1;
+    return 0;
+  });
+}
+
+function getColVal(prop, col) {
+  const m = metricas[prop.id_zonaprop];
+  switch (col) {
+    case "barrio_simple":          return prop.barrio_simple || "";
+    case "tipo_label":             return tipoLabel(prop);
+    case "m2_tasables":            return getMtasables(prop);
+    case "precio_actual":          return parseFloat(prop.precio_actual) || null;
+    case "descuento_vs_mercado":   return m ? m.descuento_vs_mercado : null;
+    case "estado_inmueble":        return prop.estado_inmueble != null ? parseInt(prop.estado_inmueble, 10) : null;
+    case "rendimiento_alquiler":   return m ? m.rendimiento_alquiler : null;
+    case "alquiler_mensual":       return m ? m.alquiler_mensual : null;
+    case "roi_flip":               return m ? m.roi_flip : null;
+    case "ganancia_flip":          return m ? m.ganancia_flip : null;
+    default:                       return null;
+  }
+}
+
+/* ============================================================
+   TABLE RENDER
+   ============================================================ */
+function renderTable() {
+  const filtered = sortProps(getFilteredProps());
+  const tbody = document.getElementById("table-body");
+  const emptyEl = document.getElementById("empty-state");
+
+  // Update counter
+  const total = allProps.length;
+  document.getElementById("counter").textContent =
+    filtered.length === total
+      ? total + " propiedades"
+      : filtered.length + " de " + total + " propiedades";
+
+  // Update sort indicators
+  document.querySelectorAll("thead th[data-col]").forEach(th => {
+    th.classList.remove("sort-asc", "sort-desc");
+    if (th.dataset.col === sortCol) {
+      th.classList.add(sortDir === "asc" ? "sort-asc" : "sort-desc");
+    }
+  });
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = "";
+    emptyEl.classList.add("visible");
+    return;
+  }
+  emptyEl.classList.remove("visible");
+
+  const rows = filtered.map(prop => {
+    const m = metricas[prop.id_zonaprop];
+    const m2 = getMtasables(prop);
+    const precio = parseFloat(prop.precio_actual);
+    const estado = prop.estado_inmueble != null ? parseInt(prop.estado_inmueble, 10) : null;
+
+    // Row class
+    let rowClass = "";
+    if (m) {
+      const roiA = m.rendimiento_alquiler;
+      const desc = m.descuento_vs_mercado;
+      if (roiA != null && roiA > 8 && desc != null && desc > 10) {
+        rowClass = "row-best";
+      } else if ((roiA != null && roiA > 6) || (desc != null && desc > 5)) {
+        rowClass = "row-good";
+      }
+    }
+
+    // Estado badge
+    let estadoHtml = '<span class="badge-null">—</span>';
+    if (estado != null) {
+      let bg, color;
+      if (estado >= 8)      { bg = "rgba(34,197,94,.25)";  color = "#4ade80"; }
+      else if (estado >= 6) { bg = "rgba(234,179,8,.25)";  color = "#fbbf24"; }
+      else if (estado >= 4) { bg = "rgba(249,115,22,.25)"; color = "#fb923c"; }
+      else                  { bg = "rgba(239,68,68,.25)";  color = "#f87171"; }
+      estadoHtml = `<span class="badge-estado" style="background:${bg};color:${color}">${estado}</span>`;
+    }
+
+    // vs Mercado
+    let vsMercadoHtml = '<span style="color:#475569">—</span>';
+    if (m && m.descuento_vs_mercado != null) {
+      const d = m.descuento_vs_mercado;
+      const cls = d >= 0 ? "pos" : "neg";
+      const sign = d >= 0 ? "+" : "";
+      vsMercadoHtml = `<span class="col-vs-mercado ${cls}">${sign}${fmtPct(d)}</span>`;
+    }
+
+    // ROI Alquiler
+    let roiAlqHtml = '<span style="color:#475569">—</span>';
+    if (m && m.rendimiento_alquiler != null) {
+      const r = m.rendimiento_alquiler;
+      let cls = "";
+      if (r > 8)      cls = "roi-alq-2";
+      else if (r > 6) cls = "roi-alq-1";
+      roiAlqHtml = `<span class="roi-cell ${cls}">${fmtPct(r)}</span>`;
+    }
+
+    // ROI Flip
+    let roiFlipHtml = '<span style="color:#475569">—</span>';
+    if (m && m.roi_flip != null) {
+      const r = m.roi_flip;
+      let cls = "";
+      if (r > 25)      cls = "roi-flip-3";
+      else if (r > 15) cls = "roi-flip-2";
+      else if (r > 0)  cls = "roi-flip-1";
+      roiFlipHtml = `<span class="roi-cell ${cls}">${fmtPct(r)}</span>`;
+    }
+
+    return `<tr class="${rowClass}" data-id="${prop.id_zonaprop}">
+      <td class="col-barrio">${prop.barrio_simple || "—"}</td>
+      <td class="col-tipo">${tipoLabel(prop)}</td>
+      <td class="col-m2">${m2 ? fmt(m2) : "—"}</td>
+      <td class="col-precio">${fmtUSD(precio)}</td>
+      <td class="col-vs-mercado">${vsMercadoHtml}</td>
+      <td class="col-estado">${estadoHtml}</td>
+      <td class="col-roi">${roiAlqHtml}</td>
+      <td class="col-alquiler">${m && m.alquiler_mensual ? fmtUSD(m.alquiler_mensual) : "—"}</td>
+      <td class="col-roi">${roiFlipHtml}</td>
+      <td class="col-ganancia">${m && m.ganancia_flip != null ? fmtUSD(m.ganancia_flip) : "—"}</td>
+      <td class="col-ver"><button class="btn-ver" data-id="${prop.id_zonaprop}">Ver</button></td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = rows.join("");
+
+  // Attach ver buttons
+  tbody.querySelectorAll(".btn-ver").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      openModal(btn.dataset.id);
+    });
+  });
+}
+
+/* Sort on header click */
+document.querySelectorAll("thead th[data-col]").forEach(th => {
+  th.addEventListener("click", () => {
+    const col = th.dataset.col;
+    if (sortCol === col) {
+      sortDir = sortDir === "asc" ? "desc" : "asc";
+    } else {
+      sortCol = col;
+      sortDir = col === "barrio_simple" || col === "tipo_label" ? "asc" : "desc";
+    }
+    renderTable();
+  });
+});
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+function estadoLabel(score) {
+  if (score >= 9)  return "Excelente";
+  if (score >= 7)  return "Muy bueno";
+  if (score >= 5)  return "Bueno";
+  if (score >= 3)  return "Regular";
+  if (score >= 1)  return "Malo";
+  return "Muy malo";
+}
+function estadoColor(score) {
+  if (score >= 8) return "#4ade80";
+  if (score >= 6) return "#fbbf24";
+  if (score >= 4) return "#fb923c";
+  return "#f87171";
+}
+
+function nullLine(val) {
+  return val != null ? "" : " null-val";
+}
+
+function openModal(id) {
+  const prop = allProps.find(p => p.id_zonaprop == id);
+  if (!prop) return;
+  const m = metricas[id];
+  const precio = parseFloat(prop.precio_actual);
+  const m2 = getMtasables(prop);
+  const estado = prop.estado_inmueble != null ? parseInt(prop.estado_inmueble, 10) : null;
+
+  document.getElementById("modal-title").textContent =
+    prop.direccion || prop.barrio_simple || "Propiedad";
+  document.getElementById("modal-subtitle").textContent =
+    [prop.barrio_simple, tipoLabel(prop), m2 ? fmt(m2) + " m²" : null]
+      .filter(Boolean).join(" · ");
+
+  // Meta chips
+  const fechaStr = prop.fecha_primera_vez
+    ? new Date(prop.fecha_primera_vez).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
+    : null;
+
+  const metaChips = [
+    prop.tipo_propiedad ? `<span class="meta-chip">${prop.tipo_propiedad}</span>` : "",
+    prop.ambientes ? `<span class="meta-chip"><strong>${prop.ambientes}</strong> amb</span>` : "",
+    prop.dormitorios ? `<span class="meta-chip"><strong>${prop.dormitorios}</strong> dorm</span>` : "",
+    m2 ? `<span class="meta-chip"><strong>${fmt(m2)}</strong> m² tasables</span>` : "",
+    prop.m2_cubiertos ? `<span class="meta-chip"><strong>${fmt(prop.m2_cubiertos)}</strong> m² cub</span>` : "",
+    prop.antiguedad ? `<span class="meta-chip">${prop.antiguedad} años</span>` : "",
+    fechaStr ? `<span class="meta-chip">Publicado ${fechaStr}</span>` : "",
+  ].filter(Boolean).join("");
+
+  // Descripción
+  const descHtml = prop.descripcion
+    ? `<div class="modal-description">${prop.descripcion}</div>`
+    : "";
+
+  // Link
+  const linkHtml = prop.url
+    ? `<a class="modal-link" href="${prop.url}" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        Ver en ZonaProp
+      </a>`
+    : "";
+
+  // Estado
+  let estadoHtml;
+  if (estado != null) {
+    estadoHtml = `<div class="modal-estado">
+      <div class="modal-estado-title">Estado del inmueble</div>
+      <div class="modal-estado-content" style="color:${estadoColor(estado)}">
+        <strong>${estado}/10</strong> — ${estadoLabel(estado)}
+      </div>
+      ${prop.notas_condicion ? `<div class="modal-notas">${prop.notas_condicion}</div>` : ""}
+    </div>`;
+  } else {
+    estadoHtml = `<div class="modal-estado">
+      <div class="modal-estado-title">Estado del inmueble</div>
+      <div class="modal-notas">Pendiente de evaluación (sin score de fotos)</div>
+    </div>`;
+  }
+
+  // Strategy cards
+  let alqCard = "";
+  let flipCard = "";
+
+  if (m) {
+    // Alquiler card
+    const alqRows = [
+      ["Precio publicado",       fmtUSD(precio)],
+      ["Sellos (3,6%)",          fmtUSD(precio * SELLOS)],
+      ["Escribanía (2,0%)",      fmtUSD(precio * ESCRIBANIA_COMPRA)],
+      ["Costos de compra total", fmtUSD(m.costos_compra)],
+      ...(m.costo_refaccion > 0
+        ? [["Refacción est. (" + fmt(m.costo_refaccion_m2) + " USD/m²)", fmtUSD(m.costo_refaccion)]]
+        : estado == null
+          ? [["Refacción (sin evaluar)", "Sin datos"]]
+          : []),
+      ["Inversión total", fmtUSD(m.inversion_total), "total"],
+      ["Alquiler mensual est.",  m.alquiler_mensual ? fmtUSD(m.alquiler_mensual) : "Sin datos de barrio"],
+      ["Alquiler anual est.",    m.alquiler_mensual ? fmtUSD(m.alquiler_mensual * 12) : "Sin datos de barrio"],
+      ["Rendimiento anual",
+        m.rendimiento_alquiler != null
+          ? fmtPct(m.rendimiento_alquiler)
+          : "Sin datos",
+        "highlight"],
+    ].map(([k, v, cls]) => {
+      const valCls = cls === "total" ? "strat-val" : cls === "highlight" ? "strat-val highlight" : "strat-val";
+      const rowCls = cls === "total" ? "strat-line total" : "strat-line";
+      return `<div class="${rowCls}"><span class="strat-key">${k}</span><span class="${valCls}">${v}</span></div>`;
+    }).join("");
+
+    alqCard = `<div class="strategy-card strat-alq">
+      <div class="strategy-card-title">Estrategia Alquiler</div>
+      ${alqRows}
+    </div>`;
+
+    // Flip card
+    const flipRows = [
+      ["Precio publicado",         fmtUSD(precio)],
+      ["Costos de compra",         fmtUSD(m.costos_compra)],
+      ...(m.costo_refaccion > 0
+        ? [["Refacción est.",       fmtUSD(m.costo_refaccion)]]
+        : estado == null
+          ? [["Refacción (sin evaluar)", "Sin datos"]]
+          : []),
+      ["Inversión total",           fmtUSD(m.inversion_total), "total"],
+      ["Precio de venta est.",
+        m.precio_mercado_venta != null
+          ? fmtUSD(m.precio_mercado_venta) + (m.venta_m2 ? ` (${fmt(m.venta_m2)} USD/m²)` : "")
+          : "Sin datos de barrio"],
+      ["Comisión vendedor (3%)",
+        m.precio_mercado_venta != null ? fmtUSD(m.precio_mercado_venta * COMISION_VENTA) : "—"],
+      ["Escribanía vendedor (1%)",
+        m.precio_mercado_venta != null ? fmtUSD(m.precio_mercado_venta * ESCRIBANIA_VENTA) : "—"],
+      ["Costos de venta total",     m.costos_venta != null ? fmtUSD(m.costos_venta) : "—"],
+      ["Ganancia neta",
+        m.ganancia_flip != null ? fmtUSD(m.ganancia_flip) : "Sin datos",
+        m.ganancia_flip != null && m.ganancia_flip >= 0 ? "highlight" : m.ganancia_flip != null ? "neg" : ""],
+      ["ROI Flip",
+        m.roi_flip != null ? fmtPct(m.roi_flip) : "Sin datos",
+        m.roi_flip != null && m.roi_flip >= 0 ? "highlight-blue roi-big" : m.roi_flip != null ? "neg roi-big" : ""],
+    ].map(([k, v, cls]) => {
+      const valCls = cls === "total"
+        ? "strat-val"
+        : cls
+          ? `strat-val ${cls}`
+          : "strat-val";
+      const rowCls = cls === "total" ? "strat-line total" : "strat-line";
+      return `<div class="${rowCls}"><span class="strat-key">${k}</span><span class="${valCls}">${v}</span></div>`;
+    }).join("");
+
+    flipCard = `<div class="strategy-card strat-flip">
+      <div class="strategy-card-title">Estrategia Flip</div>
+      ${flipRows}
+    </div>`;
+  } else {
+    alqCard = `<div class="strategy-card strat-alq"><div class="strategy-card-title">Estrategia Alquiler</div><p style="color:#475569;font-size:.85rem">Sin datos suficientes para calcular.</p></div>`;
+    flipCard = `<div class="strategy-card strat-flip"><div class="strategy-card-title">Estrategia Flip</div><p style="color:#475569;font-size:.85rem">Sin datos suficientes para calcular.</p></div>`;
+  }
+
+  document.getElementById("modal-body").innerHTML = `
+    <div class="modal-meta">${metaChips}</div>
+    ${linkHtml}
+    ${descHtml}
+    ${estadoHtml}
+    <div class="modal-strategies">
+      ${alqCard}
+      ${flipCard}
+    </div>
+  `;
+
+  document.getElementById("modal-overlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeModal() {
+  document.getElementById("modal-overlay").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+document.getElementById("modal-close").addEventListener("click", closeModal);
+document.getElementById("modal-close-footer").addEventListener("click", closeModal);
+document.getElementById("modal-overlay").addEventListener("click", e => {
+  if (e.target === document.getElementById("modal-overlay")) closeModal();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeModal();
+});
+
+/* ============================================================
+   MULTISELECT BARRIO
+   ============================================================ */
+function buildBarrioOptions() {
+  const container = document.getElementById("ms-barrio-options");
+  container.innerHTML = allBarrios.map(b => `
+    <label class="multiselect-option ${selectedBarrios.has(b) ? "checked" : ""}">
+      <input type="checkbox" value="${b}" ${selectedBarrios.has(b) ? "checked" : ""}>
+      ${b}
+    </label>
+  `).join("");
+
+  container.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    cb.addEventListener("change", () => {
+      if (cb.checked) selectedBarrios.add(cb.value);
+      else selectedBarrios.delete(cb.value);
+      const label = cb.closest(".multiselect-option");
+      if (label) label.classList.toggle("checked", cb.checked);
+      updateBarrioTrigger();
+      renderTable();
+    });
+  });
+  updateBarrioTrigger();
+}
+
+function updateBarrioTrigger() {
+  const label = document.getElementById("ms-barrio-label");
+  if (selectedBarrios.size === 0) label.textContent = "Ninguno";
+  else if (selectedBarrios.size === allBarrios.length) label.textContent = "Todos";
+  else if (selectedBarrios.size <= 2)
+    label.textContent = [...selectedBarrios].join(", ");
+  else label.textContent = selectedBarrios.size + " barrios";
+}
+
+document.getElementById("ms-barrio-trigger").addEventListener("click", e => {
+  e.stopPropagation();
+  const dd = document.getElementById("ms-barrio-dropdown");
+  const tr = document.getElementById("ms-barrio-trigger");
+  dd.classList.toggle("open");
+  tr.classList.toggle("open");
+});
+
+document.addEventListener("click", e => {
+  const wrapper = document.getElementById("ms-barrio-wrapper");
+  if (!wrapper.contains(e.target)) {
+    document.getElementById("ms-barrio-dropdown").classList.remove("open");
+    document.getElementById("ms-barrio-trigger").classList.remove("open");
+  }
+});
+
+document.getElementById("ms-barrio-search").addEventListener("input", function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll("#ms-barrio-options .multiselect-option").forEach(opt => {
+    opt.style.display = opt.textContent.trim().toLowerCase().includes(q) ? "" : "none";
+  });
+});
+
+document.getElementById("ms-barrio-all").addEventListener("click", () => {
+  selectedBarrios = new Set(allBarrios);
+  buildBarrioOptions();
+  renderTable();
+});
+document.getElementById("ms-barrio-none").addEventListener("click", () => {
+  selectedBarrios = new Set();
+  buildBarrioOptions();
+  renderTable();
+});
+
+/* ============================================================
+   STRATEGY TOGGLE
+   ============================================================ */
+document.querySelectorAll(".strat-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".strat-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentStrategy = btn.dataset.strat;
+    renderTable();
+  });
+});
+
+/* ============================================================
+   FILTER INPUTS
+   ============================================================ */
+document.getElementById("f-roi-min").addEventListener("input", function() {
+  filters.roiMin = this.value !== "" ? parseFloat(this.value) : null;
+  renderTable();
+});
+document.getElementById("f-desc-min").addEventListener("input", function() {
+  filters.descMin = this.value !== "" ? parseFloat(this.value) : null;
+  renderTable();
+});
+
+const estadoSlider = document.getElementById("f-estado-min");
+const estadoVal = document.getElementById("f-estado-val");
+estadoSlider.addEventListener("input", function() {
+  estadoVal.textContent = this.value;
+  filters.estadoMin = parseInt(this.value, 10);
+  renderTable();
+});
+
+document.getElementById("btn-clear-filters").addEventListener("click", () => {
+  selectedBarrios = new Set(allBarrios);
+  buildBarrioOptions();
+  currentStrategy = "ambas";
+  document.querySelectorAll(".strat-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.strat === "ambas");
+  });
+  document.getElementById("f-roi-min").value = "";
+  document.getElementById("f-desc-min").value = "";
+  estadoSlider.value = 1;
+  estadoVal.textContent = "1";
+  filters = { roiMin: null, descMin: null, estadoMin: 1 };
+  renderTable();
+});
+</script>
+</body>
+</html>
